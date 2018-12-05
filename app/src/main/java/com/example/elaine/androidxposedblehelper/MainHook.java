@@ -16,7 +16,10 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
+import static android.bluetooth.BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT;
+import static android.bluetooth.BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
 import static android.bluetooth.BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
+import static android.bluetooth.BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
 import static android.bluetooth.BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
 import static com.example.elaine.androidxposedblehelper.ConstantValue.TAG;
 
@@ -28,22 +31,22 @@ public class MainHook implements IXposedHookLoadPackage {
 //      //public BluetoothGatt connectGatt(Context context, boolean autoConnect, BluetoothGattCallback callback)
         XposedHelpers.findAndHookMethod(BluetoothDevice.class, "connectGatt", Context.class, boolean.class, BluetoothGattCallback.class, new XC_MethodHook() {
             @Override
-            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                super.afterHookedMethod(param);
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                super.beforeHookedMethod(param);
                 BluetoothDevice device = (BluetoothDevice) param.thisObject;
                 BluetoothGattCallback callback = (BluetoothGattCallback) param.args[2];
                 Log.e(TAG, "BluetoothDevice.connectGatt: device info:name: " + device.getName());
                 Log.e(TAG, "BluetoothDevice.connectGatt: device info:MAC: " + device.getAddress());
 
                 if (callback != null) {
-                    Log.e(TAG, "BluetoothGattCallback callback class name" + callback.getClass().getSimpleName());
+                    Log.e(TAG, "BluetoothGattCallback callback class name:" + callback.getClass().getName());
                     //begin
                     XposedHelpers.findAndHookMethod(callback.getClass(), "onCharacteristicRead", BluetoothGatt.class, BluetoothGattCharacteristic.class, int.class, new XC_MethodHook() {
                         @Override
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                             super.beforeHookedMethod(param);
                             BluetoothGattCharacteristic characteristic = (BluetoothGattCharacteristic) param.args[1];
-                            Log.e(TAG, "BluetoothGattCallback.onCharacteristicRead: characteristic:" + characteristic.getUuid() + ", value:" + characteristic.getValue() + ", status:" + param.args[2]);
+                            Log.e(TAG, "BluetoothGattCallback.onCharacteristicRead: characteristic:" + characteristic.getUuid() + ", value:" + Utils.bytesToHex(characteristic.getValue()) + ", status:" + param.args[2]);
                         }
                     });
 
@@ -52,7 +55,7 @@ public class MainHook implements IXposedHookLoadPackage {
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                             super.beforeHookedMethod(param);
                             BluetoothGattCharacteristic characteristic = (BluetoothGattCharacteristic) param.args[1];
-                            Log.e(TAG, "BluetoothGattCallback.onCharacteristicWrite: characteristic:" + characteristic.getUuid() + ", value:" + characteristic.getValue() + ", status:" + param.args[2]);
+                            Log.e(TAG, "BluetoothGattCallback.onCharacteristicWrite: characteristic:" + characteristic.getUuid() + ", value:" + Utils.bytesToHex(characteristic.getValue()) + ", status:" + param.args[2]);
                         }
                     });
 
@@ -61,7 +64,7 @@ public class MainHook implements IXposedHookLoadPackage {
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                             super.beforeHookedMethod(param);
                             BluetoothGattCharacteristic characteristic = (BluetoothGattCharacteristic) param.args[1];
-                            Log.e(TAG, "BluetoothGattCallback.onCharacteristicChanged: characteristic:" + characteristic.getUuid() + ", value:" + characteristic.getValue());
+                            Log.e(TAG, "BluetoothGattCallback.onCharacteristicChanged: characteristic:" + characteristic.getUuid() + ", value:" + Utils.bytesToHex(characteristic.getValue()));
                         }
                     });
 
@@ -70,7 +73,7 @@ public class MainHook implements IXposedHookLoadPackage {
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                             super.beforeHookedMethod(param);
                             BluetoothGattDescriptor descriptor = (BluetoothGattDescriptor) param.args[1];
-                            Log.e(TAG, "BluetoothGattCallback.onDescriptorWrite: descriptor:" + descriptor.getUuid() + ", value:" + descriptor.getValue() + ", status:" + param.args[2]);
+                            Log.e(TAG, "BluetoothGattCallback.onDescriptorWrite: descriptor:" + descriptor.getUuid() + ", value:" + Utils.bytesToHex(descriptor.getValue()) + ", status:" + param.args[2]);
                         }
                     });
 
@@ -79,7 +82,7 @@ public class MainHook implements IXposedHookLoadPackage {
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                             super.beforeHookedMethod(param);
                             BluetoothGattDescriptor descriptor = (BluetoothGattDescriptor) param.args[1];
-                            Log.e(TAG, "BluetoothGattCallback.onDescriptorWrite: descriptor:" + descriptor.getUuid() + ", value:" + descriptor.getValue() + ", status:" + param.args[2]);
+                            Log.e(TAG, "BluetoothGattCallback.onDescriptorWrite: descriptor:" + descriptor.getUuid() + ", value:" + Utils.bytesToHex(descriptor.getValue()) + ", status:" + param.args[2]);
                         }
                     });
 
@@ -141,9 +144,11 @@ public class MainHook implements IXposedHookLoadPackage {
                 byte[] value = (byte[]) param.args[0];
                 BluetoothGattDescriptor descriptor = (BluetoothGattDescriptor) param.thisObject;
                 if (Arrays.equals(value, ENABLE_NOTIFICATION_VALUE)) {
-                    Log.e(TAG, "BluetoothGattDescriptor.setValue: descriptor:" + descriptor.getUuid() + " enable notification");
+                    Log.e(TAG, "BluetoothGattDescriptor.setValue: descriptor:" + descriptor.getUuid() + " ENABLE_NOTIFICATION_VALUE");
                 } else if (Arrays.equals(value, DISABLE_NOTIFICATION_VALUE)) {
-                    Log.e(TAG, "BluetoothGattDescriptor.setValue: descriptor:" + descriptor.getUuid() + " disable notification");
+                    Log.e(TAG, "BluetoothGattDescriptor.setValue: descriptor:" + descriptor.getUuid() + " DISABLE_NOTIFICATION_VALUE");
+                } else if (Arrays.equals(value, ENABLE_INDICATION_VALUE)) {
+                    Log.e(TAG, "BluetoothGattDescriptor.setValue: descriptor:" + descriptor.getUuid() + " ENABLE_INDICATION_VALUE");
                 } else {
                     Log.e(TAG, "BluetoothGattDescriptor.setValue: descriptor:" + descriptor.getUuid() + ", value:" + Utils.bytesToHex(value));
                 }
@@ -164,7 +169,28 @@ public class MainHook implements IXposedHookLoadPackage {
                 super.beforeHookedMethod(param);
                 BluetoothGattCharacteristic characteristic = (BluetoothGattCharacteristic) param.thisObject;
                 byte[] value = (byte[]) param.args[0];
-                Log.e(TAG, "BluetoothGattCharacteristic.setValue: characteristic:" + characteristic.getUuid() + ", value:" + Utils.bytesToHex(value));
+                Log.e(TAG, "BluetoothGattCharacteristic.setValue: characteristic:" + characteristic.getUuid() + ", value bytes:" + Utils.bytesToHex(value));
+                try {
+                    throw new Exception("lajii");
+                } finally {
+
+                }
+            }
+        });
+
+        XposedHelpers.findAndHookMethod(BluetoothGattCharacteristic.class, "setWriteType", int.class, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                super.beforeHookedMethod(param);
+                BluetoothGattCharacteristic characteristic = (BluetoothGattCharacteristic) param.thisObject;
+                int value = (int) param.args[0];
+                if (value == WRITE_TYPE_DEFAULT) {
+                    Log.e(TAG, "BluetoothGattCharacteristic.setValue: characteristic:" + characteristic.getUuid() + ", writeType WRITE_TYPE_NO_RESPONSE");
+                } else if (value == WRITE_TYPE_NO_RESPONSE){
+                    Log.e(TAG, "BluetoothGattCharacteristic.setValue: characteristic:" + characteristic.getUuid() + ", writeType WRITE_TYPE_NO_RESPONSE");
+                }else {
+                    Log.e(TAG, "BluetoothGattCharacteristic.setValue: characteristic:" + characteristic.getUuid() + ", writeType bytes:" + value);
+                }
             }
         });
 
@@ -199,7 +225,12 @@ public class MainHook implements IXposedHookLoadPackage {
                 super.beforeHookedMethod(param);
                 BluetoothGattCharacteristic characteristic = (BluetoothGattCharacteristic) param.thisObject;
                 String value = (String) param.args[0];
-                Log.e(TAG, "BluetoothGattCharacteristic.setValue: characteristic:" + characteristic.getUuid() + ", value:" + value);
+                Log.e(TAG, "BluetoothGattCharacteristic.setValue: characteristic:" + characteristic.getUuid() + ", value string:" + value);
+                try {
+                    throw new Exception("laji");
+                } finally {
+
+                }
             }
         });
     }
